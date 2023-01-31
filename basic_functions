@@ -1,0 +1,682 @@
+--count_distinct_join
+
+SELECT
+ orders.*,
+ warehouse.warehouse_alias,
+ warehouse.state
+FROM
+`project-upload-372914.warehouse_order.order` AS orders
+JOIN
+ `project-upload-372914.warehouse_order.warehouse` AS warehouse
+ON
+ orders.warehouse_id = warehouse.warehouse_id;
+
+-- to know number of warehouse states
+SELECT
+ COUNT(DISTINCT warehouse.state) AS number_of_states
+FROM
+`project-upload-372914.warehouse_order.order` AS orders
+JOIN
+ `project-upload-372914.warehouse_order.warehouse` AS warehouse
+ON
+ orders.warehouse_id = warehouse.warehouse_id;
+
+ -- if i want to know number of orders in each state
+SELECT
+ warehouse.state,
+ COUNT(DISTINCT orders.order_id) AS number_orders
+FROM
+`project-upload-372914.warehouse_order.order` AS orders
+JOIN
+ `project-upload-372914.warehouse_order.warehouse` AS warehouse
+ON
+ orders.warehouse_id = warehouse.warehouse_id
+GROUP BY warehouse.state;
+
+-------------------------------------------------------------------------
+--DATA CLEAN SALES DATA
+
+
+-TO CHECK WETHER IT WAS UPLOADED WITH PROPER SCHEMA INCLUDING ALL THE FIELDS
+SELECT
+*
+FROM
+ 
+`project-upload-372914.sales_store.sale`
+
+LIMIT 10;
+
+-- inspect the data to find out how many years of sales data it includes
+
+SELECT DISTINCT EXTRACT(year FROM date) AS year
+
+FROM
+project-upload-372914.sales_store.sale 
+ORDER BY year ASC;
+
+--OR
+
+SELECT
+  MIN(Date) AS min_date,
+  MAX(Date) AS max_date
+FROM
+
+sales_store.sale;
+
+--Total quantity sold for each ProductId grouped by the month and year it was sold
+SELECT
+ productid,
+ SUM(Quantity) AS unitsold,
+ CONCAT(EXTRACT(MONTH FROM date ) , " - " , EXTRACT(YEAR FROM date ) ) AS month_year
+
+FROM
+ sales_store.sale
+
+GROUP BY month_year,
+productid
+ORDER BY
+month_year,
+ProductId;
+
+------------------------------------------------------------------------------------------------------------------
+--insert and update functin
+SELECT *
+FROM customer_data.customer_address
+-- now if we need to insert data or values to the existing table
+INSERT INTO 
+customer_data.customer_address(customer_id,address,city,state,zipcode,country)
+VALUES (2845,'333 SQL ROAD', 'Jackson', 'MI', 4920, 'US')
+
+
+--now if want to change address of a customer with customer id 2645 
+UPDATE customer_data.customer_address
+SET address = '123 New address'
+WHERE customer_id = 2645;
+-------------------------------------------------------
+--
+--Inner join
+SELECT
+ employee.name AS employee_name,
+ employee.role AS employee_role,
+ department.name AS department_name 
+FROM
+ project-upload-372914.emp_data.employee
+INNER JOIN 
+ project-upload-372914.emp_data.department
+ON
+ department.department_id = employee.department_id;
+
+--LEFT JOIN 
+--HERE THE LEFT TABLE ALL VALUES ARE CONSIDERED WHEREAS ONLY CORRESPONDING VALUES FROM THE RIGHT TABLE WOULD BE PRESENT
+SELECT
+ employee.name AS employee_name,
+ employee.role AS employee_role,
+ department.name AS department_name 
+FROM
+ project-upload-372914.emp_data.employee
+LEFT JOIN 
+ project-upload-372914.emp_data.department
+ON
+ department.department_id = employee.department_id;
+--THERE WOULD BE NULL AS THERE IS NO CORRESPONFING VALUE IN RISGHT TABLE
+
+--USING THE RIGHT JOIN ALL THE VALUES IN RIGHT TABLE IS CONSIDERED AND CORRESPONDING VALUES FROM LEFT ARE CONSIDERED
+SELECT
+ employee.name AS employee_name,
+ employee.role AS employee_role,
+ department.name AS department_name 
+FROM
+ project-upload-372914.emp_data.employee
+RIGHT JOIN 
+ project-upload-372914.emp_data.department
+ON
+ department.department_id = employee.department_id;
+
+--all the values id considered i.e full outer join
+SELECT
+ employee.name AS employee_name,
+ employee.role AS employee_role,
+ department.name AS department_name 
+FROM
+ project-upload-372914.emp_data.employee
+FULL OUTER JOIN 
+ project-upload-372914.emp_data.department
+ON
+ department.department_id = employee.department_id;
+
+----------------------------------------------------------------------------------------------
+
+---query to table
+-- to create a table from query inputed more option to query setting to destination as the dataset created in this case from_gsop2020 and table name nyc_weather
+SELECT
+  stn,
+
+  date,
+  -- Use the IF function to replace 9999.9 values, which the dataset description explains is the default value when temperature is missing, with NULLs instead.
+       IF(
+
+        temp=9999.9,
+        NULL,
+        temp) AS temperature,
+
+  -- Use the IF function to replace 999.9 values, which the dataset description explains is the default value when wind speed is missing, with NULLs instead.
+       IF(
+
+        wdsp="999.9",
+        NULL,
+        CAST(wdsp AS Float64)) AS wind_speed,
+
+-- Use the IF function to replace 99.99 values, which the dataset description explains is the default value when precipitation is missing, with NULLs instead.
+
+    IF(
+
+       prcp=99.99,
+       0,
+       prcp) AS precipitation
+FROM
+  `bigquery-public-data.noaa_gsod.gsod2020`
+WHERE
+  stn="725030" -- La Guardia
+
+  OR stn="744860" -- JFK
+ORDER BY
+  date DESC,
+  stn ASC
+  
+  ----------------------------------------------------------------------------------------------------------
+  --string_substr
+  --By length function we are able to find lenght of the string and in the case find string values in column country inconsistent with the rest of the values
+
+SELECT
+ *
+FROM 
+ customer_data.customer_address
+WHERE
+ LENGTH(country) != 2;
+
+-- using substring function for considering all values related to the country  with 'US' in the first two position in the string
+
+SELECT 
+ DISTINCT customer_id
+FROM 
+ `project-upload-372914.customer_data.customer_address`
+WHERE
+ SUBSTR(country,2,2) = 'US'; -- SUBSTR(COLUMN,POSITION OF FIRST LETTER, HOW MANY LETTERS INCLUDING THE FIRST LETTER TO PULL) 
+ -------------------------------------------------------------------------------------------------------------------------------------
+ --basic_with_function--temp table
+ WITH trips_over_1_hr AS (
+  SELECT *
+  FROM
+   bigquery-public-data.new_york_citibike.citibike_trips
+
+  WHERE
+   tripduration >= 60
+)
+## COUNTING HOW MANY TRIPS HAS HAPPENED WITH 60 PLUS MINUTES
+ SELECT COUNT(*) AS total_cnt
+ FROM trips_over_1_hr;
+ 
+ -----------------------------------------------------------------------------------------------------------------------------------
+ --with_join_functions
+ 
+  WITH clause to create a temporary table so you can find at which station the longest (duration) bike ride started
+
+WITH long_time AS (
+
+  SELECT bikeid,
+   SUM(duration_minutes) AS total_time
+  FROM
+   bigquery-public-data.austin_bikeshare.bikeshare_trips
+  GROUP BY bikeid
+  ORDER BY total_time
+  LIMIT 1 
+)
+SELECT
+trips.start_station_name,
+trips.start_station_id,
+count(*) trip_cnt
+FROM
+ long_time 
+INNER JOIN
+
+   bigquery-public-data.austin_bikeshare.bikeshare_trips AS trips
+ON
+trips.bikeid = long_time.bikeid
+GROUP BY trips.start_station_id,trips.start_station_name
+ORDER BY trip_cnt DESC
+LIMIT 1;
+-------------------------------------------------------------------------------------------------------------------------------
+--
+--check the total number of bags calculated is correct or not
+SELECT
+  date,region,
+ small_bags, large_bags, xlarge_bags, 
+ (small_bags + large_bags + xlarge_bags) AS total_bags_com, Total_Bags
+FROM
+ avacodo.avacodo_prices 
+--we need to find the percentage of total bags is small bags
+
+SELECT
+  date ,region,
+  small_bags,Total_Bags,
+ (small_bags/Total_Bags) * 100 AS percentage_small_bags
+FROM
+ avacodo.avacodo_prices 
+WHERE
+ Total_Bags > 0;
+ 
+ -----------------------------------------------------------------------------------------------------------------------------
+ --another join example
+ SELECT
+ AVG (edu.value) AS avg_value, summary.region 
+
+FROM
+ bigquery-public-data.world_bank_intl_education.international_education AS edu
+INNER JOIN
+ bigquery-public-data.world_bank_intl_education.country_summary AS summary
+ON
+ edu.country_code = summary.country_code
+WHERE
+ summary.region IS NOT NULL
+GROUP BY summary.region
+ORDER BY avg_value desc;
+
+---------------------------------------------------------------------------------------------------------------------------------
+--basic operators
+-- change_2018_raw column describes the change in weekly ridership from 2017 to 2018 in raw numbers
+--we need to find the change in weekly ridership form 2013 to 2014
+SELECT
+station_name,
+ridership_2013,
+ridership_2014,
+(ridership_2014 - ridership_2013) AS change_2014_raw,
+ ((ridership_2014 - ridership_2013)/ridership_2013) * 100 AS change_percent
+ 
+FROM
+ bigquery-public-data.new_york_subway.subway_ridership_2013_present
+WHERE 
+ridership_2013 != 0;
+
+--we want to find average weekly ridership for a longer period of time, i.e. 2013-2016
+SELECT
+station_name,
+ridership_2013,
+ridership_2014,
+ridership_2015,
+ridership_2016,
+(ridership_2013 + ridership_2014 + ridership_2015 + ridership_2016)/4 AS avg_4years
+
+FROM
+ bigquery-public-data.new_york_subway.subway_ridership_2013_present
+ ---------------------------------------------------------------------------------------------------------------
+ --data cleaning example
+ 
+ -inspecting fuel type column
+SELECT 
+ DISTINCT fuel_type -- two know the different type of fuel type in the dataset
+FROM
+ cars.car_info 
+--the lengths in this column should range from 141.1 to 208.1 as given in the company details so we can check using following function.
+SELECT
+ MAX(LENGTH) AS maximum_length, MIN(LENGTH) AS minimum_length
+FROM
+ cars.car_info;
+ --checking for missing values or null values
+ 
+SELECT *
+FROM 
+ `project-upload-372914.cars.car_info`
+WHERE 
+ num_of_doors IS NULL
+
+--In order to fill in these missing values, you check with the sales manager, who states that all Dodge gas sedans and all Mazda diesel sedans sold had four doors.
+UPDATE
+  cars.car_info
+SET
+  num_of_doors = "four"
+WHERE
+  make = "dodge"
+  AND fuel_type = "gas"
+  AND body_style = "sedan";
+
+ --Identify potential errors
+
+SELECT
+ DISTINCT num_of_cylinders
+FROM 
+ `project-upload-372914.cars.car_info`
+
+-- correcting the spelling
+UPDATE
+  cars.car_info
+SET
+  num_of_cylinders = "two"
+WHERE
+  num_of_cylinders = "tow";
+
+--the compression_ratio column values should range from 7 to 23 according to the given data discription
+SELECT 
+MAX(compression_ratio) AS maximum_compression,
+MIN(compression_ratio) AS minimum_compression
+FROM 
+ cars.car_info;
+--we observe the maximum value(70) is higher than 23, hence it might be an error as the details specify values is between 7 and 23
+SELECT
+*
+FROM
+cars.car_info
+WHERE
+compression_ratio = 70;
+--the sales manager again, who says that this row was made in error and should be removed. 
+--you should check to see how many rows contain this erroneous value as a precaution so that you don’t end up deleting 50% of your data
+
+SELECT
+COUNT(*) AS total_to_delete
+FROM
+cars.car_info
+WHERE
+compression_ratio = 70;
+--which is acceptable after contacting with the manager as its less than 10 percent
+
+DELETE cars.car_info
+WHERE
+compression_ratio = 70;
+-- ensure consistency
+--check for consistency in column 
+
+SELECT
+ DISTINCT drive_wheels
+FROM
+ cars.car_info
+
+ -- checking with respect to string length
+ SELECT
+ DISTINCT drive_wheels, LENGTH(drive_wheels) AS strng_length
+FROM
+ cars.car_info
+ -- use the TRIM function to remove all extra spaces in the drive_wheels column
+ UPDATE
+  cars.car_info
+SET
+  drive_wheels = TRIM(drive_wheels)
+WHERE TRUE;
+
+--maximum price column
+SELECT
+MAX(price) AS maximum_price
+FROM
+cars.car_info
+--------------------------------------------------------------------------------------------------------------------------
+--ccast and coalese function
+
+SELECT
+ purchase_price
+FROM
+ `project-upload-372914.lauren_furniture_customer.customer_purchase`
+
+ORDER BY purchase_price desc;
+--IT WAS OBSERVED THE DATA WAS NOT USEFUL AS THE DATA FORMAT IS WRONG i.e purchase_price data was in string format but it should be in FLOAT format so we need to use CAST func
+
+SELECT
+ CAST(purchase_price AS FLOAT64) AS purchase_price
+FROM
+ `project-upload-372914.lauren_furniture_customer.customer_purchase`
+
+ORDER BY CAST(purchase_price AS FLOAT64) desc;
+
+-- The purchases that occured during 1 december 2020 to 31 st december 2020
+SELECT
+ date, purchase_price
+
+FROM
+ `project-upload-372914.lauren_furniture_customer.customer_purchase`
+
+WHERE
+ date BETWEEN '2020-12-1' AND '2020-12-31';
+
+--we obser date column shows both date and time but we prefer just date so we can use CAST funct
+
+SELECT
+ CAST(date AS date) AS just_date, purchase_price
+
+FROM
+ `project-upload-372914.lauren_furniture_customer.customer_purchase`
+
+WHERE
+ date BETWEEN '2020-12-1' AND '2020-12-31';
+-- CONCAT FUNCTION
+-- we need to know what colour is preferred by customer for specific product
+
+SELECT
+ CONCAT(product_code,product_color)
+FROM
+ `project-upload-372914.lauren_furniture_customer.customer_purchase`
+WHERE 
+ product = 'couch';
+
+--COALESE FUCNCTION
+-- the product column has null values but we want to know all the products sold so what we can do is replace null values in product column to product_code hence helping identifying the product using COALESE
+SELECT
+
+ COALESCE(product,product_code) AS product_info
+
+FROM
+
+ `project-upload-372914.lauren_furniture_customer.customer_purchase`
+--------------------------------------------------------------------------------------------------
+--concat function
+SELECT
+ usertype , CONCAT(start_station_name , "to" , end_station_name) AS route, COUNT(*) AS num_trips, 
+ ROUND(AVG(CAST(tripduration AS int64)/60),2) AS duration
+FROM
+ `bigquery-public-data.new_york_citibike.citibike_trips`
+GROUP BY
+ start_station_name, end_station_name, usertype
+ORDER BY 
+ num_trips DESC
+ LIMIT 10
+ --------------------------------------------------------------------------------------------------------------------
+ --estract function used in dates
+ --from citibike_trips
+--we want to know how many rides did people take in each year
+SELECT
+ EXTRACT(YEAR FROM starttime) AS year,
+ COUNT(*) AS number_rides
+
+FROM
+ bigquery-public-data.new_york_citibike.citibike_trips
+WHERE
+ starttime IS NOT NULL
+GROUP BY 
+ year
+ORDER BY
+ year
+-----------------------------------------------------------------------------------------------------------------------
+--having and case functions
+-- what percentages of orders are fullfilled by each warehouse or try to know which warehouse are delivering the most orders.
+
+SELECT
+ warehouse.warehouse_id,
+ CONCAT(warehouse.warehouse_alias, " : " , warehouse.state) AS warehouse_name,
+ COUNT(orders.order_id) AS num_orders,
+ (SELECT
+    COUNT(*)
+    FROM `project-upload-372914.warehouse_order.order`) AS total_orders,
+
+     CASE
+     WHEN  COUNT(orders.order_id)/(SELECT COUNT(*) FROM `project-upload-372914.warehouse_order.order`) <= 0.2
+     THEN "Order Fullfilled 0 to 20%"
+     WHEN  COUNT(orders.order_id)/(SELECT COUNT(*) FROM `project-upload-372914.warehouse_order.order`) > 0.2 
+     AND  COUNT(orders.order_id)/(SELECT COUNT(*) FROM `project-upload-372914.warehouse_order.order`) <= 0.6 
+     THEN "Order Fullfilled 21% to 60%"
+     ELSE "Orders Fullfilled more that 60%"
+
+     END AS fullfillment_summaery
+ 
+
+
+FROM
+ project-upload-372914.warehouse_order.warehouse AS warehouse
+ LEFT JOIN -- I need all the onformation from warehouse and only relatable data from order
+ project-upload-372914.warehouse_order.order AS orders
+ON
+warehouse.warehouse_id = orders.warehouse_id 
+GROUP BY
+ warehouse.warehouse_id,
+ warehouse_name
+HAVING 
+ COUNT(orders.order_id)>0; --stating the whareouse should have atleast one order
+ 
+ --------------------------------------------------------------------------------------------------------------------
+ --inner join to see the relationship with win and type of mascot
+ SELECT
+seasons.market AS university,
+ seasons.name AS team_name,
+ seasons.wins,
+ seasons.losses,
+ seasons.ties,
+ mascots.mascot AS team_mascot
+
+FROM
+ bigquery-public-data.ncaa_basketball.mbb_historical_teams_seasons AS seasons
+INNER JOIN
+ bigquery-public-data.ncaa_basketball.mascots AS mascots
+ON
+ seasons.team_id = mascots.id
+WHERE
+ seasons.season = 1984
+ AND seasons.division = 1
+
+ORDER BY
+ seasons.market
+-------------------------------------------------------------------------------------------------------------------
+-- asked you to get the temperature, wind speed, and precipitation for stations La Guardia and JFK, for every day in 2020
+SELECT
+  stn,
+
+  date,
+  -- Use the IF function to replace 9999.9 values, which the dataset description explains is the default value when temperature is missing, with NULLs instead.
+       IF(
+
+        temp=9999.9,
+        NULL,
+        temp) AS temperature,
+
+  -- Use the IF function to replace 999.9 values, which the dataset description explains is the default value when wind speed is missing, with NULLs instead.
+       IF(
+
+        wdsp="999.9",
+        NULL,
+        CAST(wdsp AS Float64)) AS wind_speed,
+
+-- Use the IF function to replace 99.99 values, which the dataset description explains is the default value when precipitation is missing, with NULLs instead.
+
+    IF(
+
+       prcp=99.99,
+       0,
+       prcp) AS precipitation
+FROM
+  `bigquery-public-data.noaa_gsod.gsod2020`
+WHERE
+  stn="725030" -- La Guardia
+
+  OR stn="744860" -- JFK
+ORDER BY
+  date DESC,
+  stn ASC
+  ----------------------------------------------------------------------------------------------------------------------------------------------
+  --using alias
+  SELECT 
+    `bigquery-public-data.world_bank_intl_education.international_education`.country_name, 
+    `bigquery-public-data.world_bank_intl_education.country_summary`.country_code, 
+    `bigquery-public-data.world_bank_intl_education.international_education`.value
+FROM 
+    `bigquery-public-data.world_bank_intl_education.international_education`
+INNER JOIN 
+    `bigquery-public-data.world_bank_intl_education.country_summary` 
+ON `bigquery-public-data.world_bank_intl_education.country_summary`.country_code = `bigquery-public-data.world_bank_intl_education.international_education`.country_code
+
+-- WITH ALIAS
+
+SELECT 
+    edu.country_name,
+    summary.country_code,
+    edu.value
+FROM 
+    `bigquery-public-data.world_bank_intl_education.international_education` AS edu
+INNER JOIN 
+    `bigquery-public-data.world_bank_intl_education.country_summary` AS summary
+ON edu.country_code = summary.country_code
+---------------------------------------------------------------------------------------------------------------------------------------------
+--subquery o1
+--if we want to compare number of bikes available in station with average number of bikes
+SELECT
+ station_id,
+ num_bikes_available,
+ (
+   SELECT
+    AVG(num_bikes_available)
+   FROM
+    bigquery-public-data.new_york_citibike.citibike_stations
+
+ ) AS avg_num_bikes
+ FROM
+  bigquery-public-data.new_york_citibike.citibike_stations;
+  -------------------------------------------------------------------------------------------------------------------------------------
+  --subquer02 in from
+  -- to find number of rides starting from each station
+SELECT
+ station_id,
+ name,
+ num_rides AS num_rides_starting_at_station
+FROM 
+ (
+   SELECT
+    start_station_id,
+    count(*) AS num_rides
+   FROM
+    bigquery-public-data.new_york_citibike.citibike_trips --citibike_trips
+   GROUP BY 
+   start_station_id
+ ) AS station_num_trips
+INNER JOIN
+ bigquery-public-data.new_york_citibike.citibike_stations --citibike_stations
+ON
+ citibike_stations.station_id = start_station_id
+ORDER BY
+ num_rides desc;
+
+-------------------------------------------------------------------------------------------------------
+--subquery03 in where clause
+--we need to find the stations subscriber used
+SELECT
+ station_id,
+ name
+FROM
+ bigquery-public-data.new_york_citibike.citibike_stations --citibike_stations
+WHERE
+ station_id IN
+(
+  SELECT 
+    start_station_id
+   FROM
+    bigquery-public-data.new_york_citibike.citibike_trips --citibike_trips
+   WHERE
+    usertype = 'Subscriber'
+
+)
+
+---------------------------------------------------------------------------------------------------
+--trim
+--We use trim function to exclude in unwanted spaces in the entries for example state ohio i.e. 'OH' Should have two string length but some of them have 3(because of the unwanted space)
+SELECT
+ customer_id
+FROM
+ `project-upload-372914.customer_data.customer_address`
+
+WHERE
+ TRIM(state) = 'OH'
+ 
+
+
