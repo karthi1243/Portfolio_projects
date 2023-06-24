@@ -1,0 +1,60 @@
+# Feature analysis
+#lets consider steps feature
+SELECT
+  FORMAT_DATE('%A', activityday) AS day_of_week,
+  count(*) as step_usage
+FROM
+  `project-3-more-sql.case_study_01.steps`
+ group by day_of_week
+ order by day_of_week 
+
+# lets consider the sleep feature now
+SELECT
+  FORMAT_DATE('%A', sleepday) AS day_of_week,
+  count(*) as sleep_usage
+FROM
+  `project-3-more-sql.case_study_01.sleep`
+ group by day_of_week
+ order by day_of_week 
+
+# consider the weight monitoring feature
+SELECT   FORMAT_DATE('%A', date) AS day_of_week,
+  count(*) as weight_usage
+FROM
+project-3-more-sql.case_study_01.weight
+ group by day_of_week
+ order by day_of_week 
+
+ #calculating percentage of unused sleep
+
+ SELECT
+FORMAT_DATE('%A', sleepday) AS day_of_week,SUM(totaltimeinbed) as total_time_spent_on_bed, 
+SUM(totaltimeinbed - totalminutesasleep) as spent_trying_sleep, sum(totalminutesasleep) as sleeping_time, 
+(SUM(totaltimeinbed - totalminutesasleep)/SUM(totaltimeinbed) )*100 as percent_of_unused_sleeptime
+FROM
+project-3-more-sql.case_study_01.sleep
+group by day_of_week
+
+#activity based distribution
+
+SELECT
+SUM(veryactiveminutes)/60 AS very_active, SUM(fairlyactiveminutes)/60 AS fairly_active, SUM(lightlyactiveminutes)/60 as lightly_active, SUM(sedentaryminutes)/60 as sedentary_minutes, (SUM(veryactiveminutes) +  SUM(fairlyactiveminutes) + SUM(lightlyactiveminutes) + SUM(sedentaryminutes))/60 as total_time_spent
+FROM
+project-3-more-sql.case_study_01.daily_activity
+
+#intensity for hour distribution
+
+SELECT
+activityhour,SUM(totalintensity) as total_intensity
+FROM
+project-3-more-sql.case_study_01.intensities
+GROUP BY activityhour
+
+
+#identifying unutilized time one bed
+
+SELECT
+FORMAT_TIMESTAMP('%A', sleepday) AS day, SUM(totaltimeinbed-totalminutesasleep) as untlized_time_on_bed,sum(totaltimeinbed) as time_on_bed
+FROM
+project-3-more-sql.case_study_01.sleep_well
+group by day
