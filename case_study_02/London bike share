@@ -1,1 +1,64 @@
+# cross verifying with the data with info given in metadata
+#identifying the unique values in seasons
+SELECT
+DISTINCT season
+FROM
+project-3-more-sql.case_study_02.london_bikeshare
+order by season
+# next checking weather_code
+SELECT
+DISTINCT weather_code
+FROM
+project-3-more-sql.case_study_02.london_bikeshare
+order by weather_code
+# next is_holiday
+SELECT
+DISTINCT is_holiday
+FROM
+project-3-more-sql.case_study_02.london_bikeshare
+order by is_holiday
+#is_weekend
+SELECT
+DISTINCT is_weekend
+FROM
+project-3-more-sql.case_study_02.london_bikeshare
+order by is_weekend
+#CHANGES in values or modifications.
+# humidity percent is converted 0 to 1 range values
+# Rename the column or variables names to prefernce 
+# change weather_code with help of metadata
+#change the seaons from code to seasons using the meatadata
+
+WITH new_t AS
+(
+  SELECT timestamp AS date_time,
+         cnt AS count_new_bikeshare,
+         t1 AS real_temp,
+         t2 AS feelslike_temp,
+         hum/100 AS humidity_percent,
+         wind_speed,
+         CASE
+           WHEN weather_code = 1 THEN "Clear"
+           WHEN weather_code = 2 THEN "Scattered_clouds"
+           WHEN weather_code = 3 THEN "Broken_clouds"
+           WHEN weather_code = 4 THEN "Cloudy"
+           WHEN weather_code = 7 THEN "Rain"
+           WHEN weather_code = 10 THEN "Rain_with_thunderstorm"
+           WHEN weather_code = 26 THEN "Snowfall"
+         END AS weather,
+         is_holiday,
+         is_weekend,
+         CASE
+           WHEN season = 0 THEN "Spring"
+           WHEN season = 1 THEN "Summer"
+           WHEN season = 2 THEN "Autumn"
+           WHEN season = 3 THEN "Winter"
+          END AS seasons
+  FROM project-3-more-sql.case_study_02.london_bikeshare
+)
+SELECT * FROM new_t ORDER BY date_time
+
+
+
+
 
